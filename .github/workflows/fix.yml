@@ -31,7 +31,7 @@ jobs:
 
       - name: Run vulnerability scanner
         env:
-          DIGITALOCEAN_INFERENCE_KEY: ${{ secrets.DIGITALOCEAN_INFERENCE_KEY }}
+          DIGITALOCEAN_INFERENCE_KEY: ${{secrets.DIGITALOCEAN_INFERENCE_KEY}}
         run: |
           mkdir -p scan_results
           # Build a manifest mapping result JSON -> source file path
