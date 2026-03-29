@@ -25,7 +25,6 @@ from cryptography.hazmat.backends.interfaces import CipherBackend
 from cryptography.hazmat.primitives.ciphers import algorithms, base, modes
 
 
-
 from .utils import _load_all_params, generate_aead_test, generate_encrypt_test
 
 from ...utils import load_nist_vectors
