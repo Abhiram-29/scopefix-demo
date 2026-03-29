@@ -1,0 +1,1 @@
+# A demo repository showcasing how scopefix can be used in CI/CD pipelines
