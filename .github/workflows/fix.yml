@@ -34,16 +34,15 @@ jobs:
           DIGITALOCEAN_INFERENCE_KEY: ${{secrets.DIGITALOCEAN_INFERENCE_KEY}}
         run: |
           mkdir -p scan_results
-          # Build a manifest mapping result JSON -> source file path
-          echo "{}" > scan_results/manifest.json
-
           python - <<'EOF'
-          import subprocess, json, os, pathlib
+          import json, pathlib
+          from scopefix import fix_loop
 
           manifest = {}
           py_files = [
               str(p) for p in pathlib.Path(".").rglob("*.py")
               if ".git" not in p.parts
+              and "scan_results" not in p.parts
           ]
 
           for i, source_path in enumerate(py_files):
@@ -51,17 +50,21 @@ jobs:
               manifest[result_path] = source_path
 
               print(f"Scanning {source_path} ...")
-              with open(result_path, "w") as out:
-                  subprocess.run(
-                      ["scopefix", source_path],  # <-- change this
-                      stdout=out,
-                      stderr=subprocess.STDOUT
-                  )
+              try:
+                  res = fix_loop.fix_vuln(source_path)
+                  with open(result_path, "w") as f:
+                      # res may contain non-serializable objects (e.g. PatchResults)
+                      # so we only save what we need
+                      json.dump({"code": res["code"]} if "code" in res else {}, f)
+              except Exception as e:
+                  print(f"Error scanning {source_path}: {e}")
+                  with open(result_path, "w") as f:
+                      json.dump({}, f)
 
           with open("scan_results/manifest.json", "w") as f:
               json.dump(manifest, f, indent=2)
 
-          print(f"\nScanned {len(py_files)} file(s).")
+          print(f"Scanned {len(py_files)} file(s).")
           EOF
 
       - name: Check for fix
