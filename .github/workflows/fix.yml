@@ -120,6 +120,7 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          add-paths: '**.py'
           commit-message: "fix: auto-fix security vulnerabilities detected by bandit"
           branch: auto-fix/vulnerability-patch-${{ github.run_number }}
           base: main                 
