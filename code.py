@@ -14,11 +14,7 @@ import binascii
 
 import os
 
-
-
 import pytest
-
-
 
 from cryptography.hazmat.backends.interfaces import CipherBackend
 
