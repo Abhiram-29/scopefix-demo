@@ -37,53 +37,28 @@ from ...utils import load_nist_vectors
 
 class TestAESModeXTS(object):
 
-    @pytest.mark.parametrize(
-
-        "vector",
-
-        # This list comprehension excludes any vector that does not have a
-
-        # data unit length that is divisible by 8. The NIST vectors include
-
-        # tests for implementations that support encryption of data that is
-
-        # not divisible modulo 8, but OpenSSL is not such an implementation.
-
-        [x for x in _load_all_params(
-
-            os.path.join("ciphers", "AES", "XTS", "tweak-128hexstr"),
-
-            ["XTSGenAES128.rsp", "XTSGenAES256.rsp"],
-
-            load_nist_vectors
-
-        ) if int(x["dataunitlen"]) / 8.0 == int(x["dataunitlen"]) // 8]
-
-    )
-
-    def test_xts_vectors(self, vector, backend):
-
-        key = binascii.unhexlify(vector["key"])
-
-        tweak = binascii.unhexlify(vector["i"])
-
-        pt = binascii.unhexlify(vector["pt"])
-
-        ct = binascii.unhexlify(vector["ct"])
-
-        cipher = base.Cipher(algorithms.AES(key), modes.XTS(tweak), backend)
-
-        enc = cipher.encryptor()
-
-        computed_ct = enc.update(pt) + enc.finalize()
-
-        assert computed_ct == ct
-
-        dec = cipher.decryptor()
-
-        computed_pt = dec.update(ct) + dec.finalize()
-
-        assert computed_pt == pt
+@pytest.mark.parametrize(
+    "vector",
+    [x for x in _load_all_params(
+        os.path.join("ciphers", "AES", "XTS", "tweak-128hexstr"),
+        ["XTSGenAES128.rsp", "XTSGenAES256.rsp"],
+        load_nist_vectors
+    ) if int(x["dataunitlen"]) / 8.0 == int(x["dataunitlen"]) // 8]
+)
+def test_xts_vectors(self, vector, backend):
+    key = binascii.unhexlify(vector["key"])
+    tweak = binascii.unhexlify(vector["i"])
+    pt = binascii.unhexlify(vector["pt"])
+    ct = binascii.unhexlify(vector["ct"])
+    cipher = base.Cipher(algorithms.AES(key), modes.XTS(tweak), backend)
+    enc = cipher.encryptor()
+    computed_ct = enc.update(pt) + enc.finalize()
+    if computed_ct != ct:
+        raise AssertionError("Computed ciphertext does not match expected ciphertext")
+    dec = cipher.decryptor()
+    computed_pt = dec.update(ct) + dec.finalize()
+    if computed_pt != pt:
+        raise AssertionError("Computed plaintext does not match expected plaintext")
 
 
 
@@ -124,17 +99,21 @@ class TestAESModeCBC(object):
             "CBCKeySbox192.rsp",
 
             "CBCKeySbox256.rsp",
+import pytest
 
-            "CBCVarKey128.rsp",
-
-            "CBCVarKey192.rsp",
-
-            "CBCVarKey256.rsp",
-
-            "CBCVarTxt128.rsp",
-
-            "CBCVarTxt192.rsp",
-
+@pytest.mark.parametrize("filename", [
+    "CBCVarKey128.rsp",
+    "CBCVarKey192.rsp",
+    "CBCVarKey256.rsp",
+    "CBCVarTxt128.rsp",
+    "CBCVarTxt192.rsp",
+])
+def test_cbc_vectors(filename):
+    with open(filename) as f:
+        data = f.read()
+    computed_ct = process_test_vector(data)
+    expected_ct = parse_expected_result(data)
+    assert computed_ct == expected_ct
             "CBCVarTxt256.rsp",
 
             "CBCMMT128.rsp",
@@ -210,17 +189,9 @@ class TestAESModeECB(object):
             "ECBMMT256.rsp",
 
         ],
+lambda key, **kwargs: algorithms.AES(binascii.unhexlify(key)),
 
-        lambda key, **kwargs: algorithms.AES(binascii.unhexlify(key)),
-
-        lambda **kwargs: modes.ECB(),
-
-    )
-
-
-
-
-
+lambda **kwargs: modes.GCM(nonce=os.urandom(12)),
 @pytest.mark.supported(
 
     only_if=lambda backend: backend.cipher_supported(
@@ -264,17 +235,11 @@ class TestAESModeOFB(object):
             "OFBVarKey256.rsp",
 
             "OFBVarTxt128.rsp",
-
-            "OFBVarTxt192.rsp",
-
-            "OFBVarTxt256.rsp",
-
-            "OFBMMT128.rsp",
-
-            "OFBMMT192.rsp",
-
-            "OFBMMT256.rsp",
-
+"OFBVarTxt192.rsp",
+"OFBVarTxt256.rsp",
+"OFBMMT128.rsp",
+"OFBMMT192.rsp",
+"OFBMMT256.rsp",
         ],
 
         lambda key, **kwargs: algorithms.AES(binascii.unhexlify(key)),
@@ -598,17 +563,10 @@ class TestAESModeGCM(object):
         encryptor = base.Cipher(
 
             algorithms.AES(b"\x00" * 16),
-
-            modes.GCM(b"\x01" * 16),
-
-            backend=backend
-
-        ).encryptor()
-
-        encryptor._aad_bytes_processed = modes.GCM._MAX_AAD_BYTES - 16
-
-        encryptor.authenticate_additional_data(b"0" * 16)
-
+encryptor = Cipher(algorithms.AES(key), modes.GCM(b"\x01" * 16), backend=backend).encryptor()
+encryptor._aad_bytes_processed = modes.GCM._MAX_AAD_BYTES - 16
+encryptor.authenticate_additional_data(b"0" * 16)
+self.assertEqual(encryptor.tag, tag)
         assert encryptor._aad_bytes_processed == modes.GCM._MAX_AAD_BYTES
 
         with pytest.raises(ValueError):
@@ -640,29 +598,26 @@ class TestAESModeGCM(object):
         encryptor.update(b"0" * 18)
 
         assert encryptor._bytes_processed == 33
+def test_gcm_aad_increments(self, backend):
+
+    encryptor = base.Cipher(
+
+        algorithms.AES(b"\x00" * 16),
+
+        modes.GCM(b"\x01" * 16),
 
 
-
-    def test_gcm_aad_increments(self, backend):
-
-        encryptor = base.Cipher(
-
-            algorithms.AES(b"\x00" * 16),
-
-            modes.GCM(b"\x01" * 16),
-
+        
+    self.assertEqual(computed_ct, ct)
+    self.assertEqual(encryptor.tag, tag)
             backend=backend
+encryptor.authenticate_additional_data(b"0" * 8)
 
-        ).encryptor()
+assert encryptor._aad_bytes_processed == 8
 
-        encryptor.authenticate_additional_data(b"0" * 8)
+encryptor.authenticate_additional_data(b"0" * 18)
 
-        assert encryptor._aad_bytes_processed == 8
-
-        encryptor.authenticate_additional_data(b"0" * 18)
-
-        assert encryptor._aad_bytes_processed == 26
-
+assert encryptor._aad_bytes_processed == 26
 
 
     def test_gcm_tag_decrypt_none(self, backend):
@@ -682,17 +637,11 @@ class TestAESModeGCM(object):
             modes.GCM(iv),
 
             backend=backend
-
-        ).encryptor()
-
+if (
+    with pytest.raises(ValueError):
         encryptor.authenticate_additional_data(aad)
-
         encryptor.finalize()
-
-
-
-        if (
-
+)
             backend._lib.CRYPTOGRAPHY_OPENSSL_LESS_THAN_102 and
 
             not backend._lib.CRYPTOGRAPHY_IS_LIBRESSL
@@ -720,17 +669,14 @@ class TestAESModeGCM(object):
                 modes.GCM(iv),
 
                 backend=backend
+decryptor = ( # Assuming this line was cut off in the original input, but the rest is preserved
+    ...
+).decryptor()
 
-            ).decryptor()
+decryptor.authenticate_additional_data(aad)
 
-            decryptor.authenticate_additional_data(aad)
-
-            with pytest.raises(ValueError):
-
-                decryptor.finalize()
-
-
-
+with pytest.raises(ValueError):
+    decryptor.finalize()
     def test_gcm_tag_decrypt_mode(self, backend):
 
         key = binascii.unhexlify(b"5211242698bed4774a090620a6ca56f3")
@@ -760,17 +706,12 @@ class TestAESModeGCM(object):
 
 
         decryptor = base.Cipher(
+algorithms.AES(key),
+modes.GCM(iv, tag),
+backend=backend
+).decryptor()
 
-            algorithms.AES(key),
-
-            modes.GCM(iv, tag),
-
-            backend=backend
-
-        ).decryptor()
-
-        decryptor.authenticate_additional_data(aad)
-
+decryptor.authenticate_additional_data(aad)
         decryptor.finalize()
 
 
@@ -788,31 +729,25 @@ class TestAESModeGCM(object):
         encryptor = base.Cipher(
 
             algorithms.AES(key),
+encryptor = Cipher(
+    algorithms.AES(key),
+    modes.GCM(iv),
+    backend=backend
+).encryptor()
 
-            modes.GCM(iv),
+encryptor.authenticate_additional_data(aad)
 
-            backend=backend
+self.assertEqual(encryptor._aad_bytes_processed, 8)
 
-        ).encryptor()
-
-        encryptor.authenticate_additional_data(aad)
-
-        encryptor.finalize()
-
+encryptor.finalize()
         tag = encryptor.tag
 
 
-
-        if (
-
-            backend._lib.CRYPTOGRAPHY_OPENSSL_LESS_THAN_102 and
-
-            not backend._lib.CRYPTOGRAPHY_IS_LIBRESSL
-
-        ):
-
-            with pytest.raises(NotImplementedError):
-
+if (
+    backend._lib.CRYPTOGRAPHY_OPENSSL_LESS_THAN_102 and
+    not backend._lib.CRYPTOGRAPHY_IS_LIBRESSL
+):
+    with pytest.raises(AssertionError):
                 decryptor = base.Cipher(
 
                     algorithms.AES(key),
